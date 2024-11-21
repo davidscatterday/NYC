@@ -4,6 +4,7 @@ import sqlalchemy
 import requests
 from sqlalchemy import create_engine
 from bs4 import BeautifulSoup
+import seaborn as sns
 
 # Function to scrape data from the website
 def scrape_data():
