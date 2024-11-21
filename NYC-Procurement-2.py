@@ -70,41 +70,82 @@ def main():
     job_titles = st.sidebar.selectbox("Job Titles", [""] + get_unique_values("Job Titles"))
     headcount = st.sidebar.selectbox("Head-count", [""] + [str(x) for x in get_unique_values("Head-count")])
 
-    # Initialize session state
-    if 'search_clicked' not in st.session_state:
-        st.session_state.search_clicked = False
+  
 
     # Search button
     if st.sidebar.button("Search"):
         st.session_state.search_clicked = True
-
-    # Display results
-    if st.session_state.search_clicked:
         # Check if any additional filters are set
         additional_filters_set = any([agency, procurement_method, fiscal_quarter, job_titles, headcount])
 
         if keyword or additional_filters_set:
-            results = search_data(
+            st.session_state.results = search_data(
                 keyword, agency, procurement_method,
                 fiscal_quarter, job_titles, headcount
             )
-            
-            if not results.empty:
-                st.write(f"Found {len(results)} results:")
-                st.dataframe(results)
+        else:
+            st.session_state.results = pd.DataFrame()
 
-                # Add download button
-                csv = convert_df_to_csv(results)
+        # Ensure the session state variables are initialized
+        if 'results' not in st.session_state:
+            st.session_state.results = pd.DataFrame()  # Initialize with your actual data
+        if 'selected_rows' not in st.session_state:
+            st.session_state.selected_rows = pd.DataFrame()
+        if 'previous_selection' not in st.session_state:
+            st.session_state.previous_selection = set()
+
+
+        # Display results
+        if st.session_state.search_clicked:
+            if not st.session_state.results.empty:
+                st.write(f"Found {len(st.session_state.results)} results:")
+
+                # Add a checkbox column to the DataFrame
+                results_with_checkbox = st.session_state.results.copy()
+                results_with_checkbox['Select'] = False
+
+                # Display the DataFrame with checkboxes
+                edited_df = st.data_editor(
+                    results_with_checkbox,
+                    hide_index=True,
+                    column_config={
+                        "Select": st.column_config.CheckboxColumn("Select", default=False)
+                    },
+                    disabled=results_with_checkbox.columns.drop('Select').tolist(),
+                    key="editable_dataframe"
+                )
+
+                # Check for changes in the DataFrame
+                if not edited_df.equals(results_with_checkbox):
+                    # Get the currently selected rows
+                    current_selection = set(edited_df[edited_df['Select']].index)
+                    
+                    # Find newly selected rows
+                    new_selections = current_selection - st.session_state.previous_selection
+                    
+                    # Add only the newly selected rows to the selected_rows DataFrame
+                    new_rows = edited_df.loc[list(new_selections)].drop(columns=['Select'])
+                    st.session_state.selected_rows = pd.concat([st.session_state.selected_rows, new_rows], ignore_index=True)
+                    
+                    # Update the previous selection
+                    st.session_state.previous_selection = current_selection
+
+                # Display the selected rows
+                st.write("Selected Rows:")
+                st.dataframe(st.session_state.selected_rows, hide_index=True)
+                
+                # Download button for search results
+                csv = convert_df_to_csv(st.session_state.results)
                 st.download_button(
-                    label="Download results as CSV",
+                    label="Download search results as CSV",
                     data=csv,
-                    file_name="nyc_procurement_results.csv",
+                    file_name=f"nyc_procurement_search_results_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv",
                     mime="text/csv"
                 )
             else:
                 st.write("No results found.")
-        else:
-            st.write("Please enter a keyword or select at least one filter.")
+    else:
+        st.write("Please enter a keyword or select at least one filter and click 'Search'.")
 
 if __name__ == "__main__":
     main()

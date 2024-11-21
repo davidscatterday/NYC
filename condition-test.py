@@ -1,4 +1,7 @@
 import streamlit as st
+
+st.set_page_config(layout="wide")  # Set the page layout to wide
+
 import sqlite3
 import pandas as pd
 from datetime import datetime
@@ -70,41 +73,81 @@ def main():
     job_titles = st.sidebar.selectbox("Job Titles", [""] + get_unique_values("Job Titles"))
     headcount = st.sidebar.selectbox("Head-count", [""] + [str(x) for x in get_unique_values("Head-count")])
 
-    # Initialize session state
+    # Initialize session state variables
     if 'search_clicked' not in st.session_state:
         st.session_state.search_clicked = False
+    if 'results' not in st.session_state:
+        st.session_state.results = pd.DataFrame()
+    if 'selected_rows' not in st.session_state:
+        st.session_state.selected_rows = pd.DataFrame()
+    if 'previous_selection' not in st.session_state:
+        st.session_state.previous_selection = set()
 
     # Search button
     if st.sidebar.button("Search"):
         st.session_state.search_clicked = True
-
-    # Display results
-    if st.session_state.search_clicked:
         # Check if any additional filters are set
         additional_filters_set = any([agency, procurement_method, fiscal_quarter, job_titles, headcount])
 
         if keyword or additional_filters_set:
-            results = search_data(
+            st.session_state.results = search_data(
                 keyword, agency, procurement_method,
                 fiscal_quarter, job_titles, headcount
             )
-            
-            if not results.empty:
-                st.write(f"Found {len(results)} results:")
-                st.dataframe(results)
-
-                # Add download button
-                csv = convert_df_to_csv(results)
-                st.download_button(
-                    label="Download results as CSV",
-                    data=csv,
-                    file_name="nyc_procurement_results.csv",
-                    mime="text/csv"
-                )
-            else:
-                st.write("No results found.")
         else:
-            st.write("Please enter a keyword or select at least one filter.")
+            st.session_state.results = pd.DataFrame()
+
+    # Display results
+    if st.session_state.search_clicked:
+        if not st.session_state.results.empty:
+            st.write(f"Found {len(st.session_state.results)} results:")
+
+            # Add a checkbox column to the DataFrame
+            results_with_checkbox = st.session_state.results.copy()
+            results_with_checkbox['Select'] = False
+
+            # Display the DataFrame with checkboxes
+            edited_df = st.data_editor(
+                results_with_checkbox,
+                hide_index=True,
+                column_config={
+                    "Select": st.column_config.CheckboxColumn("Select", default=False)
+                },
+                disabled=results_with_checkbox.columns.drop('Select').tolist(),
+                key="editable_dataframe"
+            )
+
+            # Check for changes in the DataFrame
+            current_selection = set(edited_df[edited_df['Select']].index)
+            new_selections = current_selection - st.session_state.previous_selection
+            deselections = st.session_state.previous_selection - current_selection
+
+            # Add newly selected rows
+            new_rows = edited_df.loc[list(new_selections)].drop(columns=['Select'])
+            st.session_state.selected_rows = pd.concat([st.session_state.selected_rows, new_rows], ignore_index=True)
+
+            # Remove deselected rows
+            st.session_state.selected_rows = st.session_state.selected_rows[~st.session_state.selected_rows.index.isin(deselections)]
+
+            # Update the previous selection
+            st.session_state.previous_selection = current_selection
+
+            # Display the selected rows
+            st.write("Selected Records:")
+            st.dataframe(st.session_state.selected_rows, hide_index=True)
+            
+            # Download button for search results
+            csv = convert_df_to_csv(st.session_state.results)
+            st.download_button(
+                label="Download search results as CSV",
+                data=csv,
+                file_name=f"nyc_procurement_search_results_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv",
+                mime="text/csv"
+            )
+        else:
+            st.write("No results found.")
+    else:
+        st.write("Please enter a keyword or select at least one filter and click 'Search'.")
 
 if __name__ == "__main__":
     main()
