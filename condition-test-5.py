@@ -89,8 +89,7 @@ def main():
         if keyword or additional_filters_set:
             st.session_state.results = search_data(
                 keyword, agency, procurement_method,
-                fiscal_quarter, job_titles, headcount
-            )
+                fiscal_quarter, job_titles, headcount)
         else:
             st.session_state.results = pd.DataFrame()
 
@@ -134,7 +133,7 @@ def main():
             st.write("Selected Records:")
             st.dataframe(st.session_state.selected_rows, hide_index=True)
 
-            )
+            
         else:
             st.write("No results found.")
     else:
