@@ -2,23 +2,26 @@ import streamlit as st
 
 st.set_page_config(layout="wide")  # Set the page layout to wide
 
-import sqlite3
 import pandas as pd
-from datetime import datetime
-import requests
-from bs4 import BeautifulSoup
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
+import sqlite3
 
-
-# Connect to the SQLite database
+# Function to get database connection
 @st.cache_resource
 def get_connection():
     return sqlite3.connect('/Users/davidscatterday/Documents/python projects/NYC/nycprocurement.db', check_same_thread=False)
 
+# Use the cached connection
 conn = get_connection()
 
-# Function to search data based on all filters
+# Function to get unique values from a column
+@st.cache_data
+def get_unique_values(column):
+    query = f"SELECT DISTINCT `{column}` FROM newtable ORDER BY `{column}`"
+    return pd.read_sql_query(query, conn)[column].tolist()
+
+# Function to search data
 @st.cache_data
 def search_data(keyword, agency, procurement_method, fiscal_quarter, job_titles, headcount):
     query = """
@@ -27,42 +30,27 @@ def search_data(keyword, agency, procurement_method, fiscal_quarter, job_titles,
     """
     params = [f'%{keyword}%']
 
+    if keyword:
+        query += " AND `Services Descrption` LIKE ?"
+        params.append(f"%{keyword}%")
     if agency:
-        query += ' AND "Agency" = ?'
+        query += " AND Agency = ?"
         params.append(agency)
     if procurement_method:
-        query += ' AND "Procurement Method" = ?'
+        query += " AND `Procurement Method` = ?"
         params.append(procurement_method)
     if fiscal_quarter:
-        query += ' AND "Fiscal Quarter" = ?'
+        query += " AND `Fiscal Quarter` = ?"
         params.append(fiscal_quarter)
     if job_titles:
-        query += ' AND "Job Titles" = ?'
+        query += " AND `Job Titles` = ?"
         params.append(job_titles)
     if headcount:
-        query += ' AND "Head-count" = ?'
+        query += " AND `Head-count` = ?"
         params.append(headcount)
 
-    df = pd.read_sql_query(query, conn, params=params)
-    return df
+    return pd.read_sql_query(query, conn, params=params)
 
-# Function to get unique values for dropdown filters
-@st.cache_data
-def get_unique_values(column):
-    query = f"SELECT DISTINCT \"{column}\" FROM newtable WHERE \"{column}\" IS NOT NULL AND \"{column}\" != ''"
-    return [row[0] for row in conn.execute(query).fetchall()]
-
-@st.cache_data
-def convert_df_to_csv(df):
-    return df.to_csv(index=False).encode('utf-8')
-
-# Function to perform fuzzy matching
-def fuzzy_match(row, choices, scorer=fuzz.token_sort_ratio):
-    match, score = process.extractOne(row['Services Description'], choices, scorer=scorer)
-    return pd.Series({'Best Match': match, 'Match Score': score})
-
-
-# Streamlit app and main content
 def main():
     # Initialize session state variables if they do not exist
     if 'search_clicked' not in st.session_state:
@@ -146,9 +134,6 @@ def main():
             if not st.session_state.selected_rows.empty:
                 st.write("Fuzzy Matching Results:")
                 
-                # Use the cached connection
-                conn = get_connection()
-                
                 # Query all rows from the table
                 query = "SELECT * FROM nycproawards4"
                 df = pd.read_sql_query(query, conn)
@@ -157,7 +142,7 @@ def main():
                 choices = df['Title'].tolist()
                 
                 def fuzzy_match(row):
-                    match, score = process.extractOne(row['Services Description'], choices, scorer=fuzz.token_sort_ratio)
+                    match, score = process.extractOne(row['Services Descrption'], choices, scorer=fuzz.token_sort_ratio)
                     return pd.Series({'Best Match': match, 'Match Score': score})
                 
                 results = st.session_state.selected_rows.apply(fuzzy_match, axis=1)
@@ -171,32 +156,24 @@ def main():
                 # Optional: Display detailed matches
                 st.write("Detailed Matches:")
                 for index, row in matched_df.iterrows():
-                    st.write(f"Services Description: {row['Services Description']}")
+                    st.write(f"Services Description: {row['Services Descrption']}")
                     st.write(f"Best Match in Procurement Awards: {row['Best Match']}")
                     st.write(f"Match Score: {row['Match Score']}")
                     st.write("---")
-                
-                # Close the connection
-                conn.close()
             
         else:
             st.write("No results found.")
     else:
         st.write("Please enter a keyword or select at least one filter and click 'Search'.")
 
+    # Display the full table
+    st.header("FY25 NYC Government Procurement Awards")
+    query = "SELECT * FROM nycproawards4"
+    df = pd.read_sql_query(query, conn)
+    st.dataframe(df)
+
 if __name__ == "__main__":
     main()
 
-# Use the cached connection
-conn = get_connection()
-
-# Query all rows from the table
-query = "SELECT * FROM nycproawards4"
-df = pd.read_sql_query(query, conn)
-
-# Display the table
-st.header("FY25 NYC Government Procurement Awards")
-st.dataframe(df)
-
-# Close the connection
-conn.close()
+# Note: We don't close the connection here because it's a cached resource
+# The connection will be closed when the Streamlit app is shut down
