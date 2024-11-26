@@ -44,6 +44,15 @@ def search_data(keyword, agency, procurement_method, fiscal_quarter, job_titles,
     
     return pd.read_sql_query(query, conn, params=params)
 
+def capture_screenshot_and_convert_to_pdf():
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page()
+        page.goto(st.get_option("browser.serverAddress"))
+        pdf_bytes = page.pdf()
+        browser.close()
+    return pdf_bytes
+
 def main():
     if 'search_clicked' not in st.session_state:
         st.session_state.search_clicked = False
@@ -127,6 +136,12 @@ def main():
             st.dataframe(pd.DataFrame(matched_rows))
         else:
             st.write("No keyword matches found.")
+
+if st.button("Download as PDF"):
+    pdf_bytes = capture_screenshot_and_convert_to_pdf()
+    b64 = base64.b64encode(pdf_bytes).decode()
+    href = f'<a href="data:application/pdf;base64,{b64}" download="screenshot.pdf">Download PDF</a>'
+    st.markdown(href, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
