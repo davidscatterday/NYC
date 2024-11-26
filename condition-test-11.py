@@ -48,7 +48,7 @@ def capture_screenshot_and_convert_to_pdf():
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
-        page.goto(st.get_option("browser.serverAddress"))
+        page.goto("http://localhost:8501")
         pdf_bytes = page.pdf()
         browser.close()
     return pdf_bytes
