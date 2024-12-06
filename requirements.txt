@@ -1,6 +1,6 @@
-flashtext==2.7
-streamlit==1.24.1
-pandas>=1.3.0
-playwright==1.10.0
-pillow==9.5.0
-greenlet==1.0.0
+flashtext
+streamlit
+pandas
+playwright
+pillow
+greenlet
