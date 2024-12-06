@@ -4,9 +4,6 @@ import sqlite3
 from flashtext import KeywordProcessor
 from playwright.sync_api import sync_playwright
 import base64
-import hmac
-
-
 
 st.set_page_config(layout="wide")
 
@@ -56,46 +53,7 @@ def capture_screenshot_and_convert_to_pdf():
         browser.close()
     return pdf_bytes
 
-def check_password():
-    """Returns `True` if the user had a correct password."""
-
-    def login_form():
-        """Form with widgets to collect user information"""
-        with st.form("Credentials"):
-            st.text_input("Username", key="username")
-            st.text_input("Password", type="password", key="password")
-            st.form_submit_button("Log in", on_click=password_entered)
-
-    def password_entered():
-        """Checks whether a password entered by the user is correct."""
-        if st.session_state["username"] in st.secrets[
-            "passwords"
-        ] and hmac.compare_digest(
-            st.session_state["password"],
-            st.secrets.passwords[st.session_state["username"]],
-        ):
-            st.session_state["password_correct"] = True
-            del st.session_state["password"]  # Don't store the username or password.
-            del st.session_state["username"]
-        else:
-            st.session_state["password_correct"] = False
-
-    # Return True if the username + password is validated.
-    if st.session_state.get("password_correct", False):
-        return True
-
-    # Show inputs for username + password.
-    login_form()
-    if "password_correct" in st.session_state:
-        st.error("😕 User not known or password incorrect")
-    return False
-
-
-if not check_password():
-    st.stop()
-
 def main():
-
     if 'search_clicked' not in st.session_state:
         st.session_state.search_clicked = False
     if 'results' not in st.session_state:
@@ -178,6 +136,6 @@ def main():
             st.dataframe(pd.DataFrame(matched_rows))
         else:
             st.write("No keyword matches found.")
-
+            
 if __name__ == "__main__":
     main()

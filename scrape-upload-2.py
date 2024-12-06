@@ -4,7 +4,6 @@ import sqlalchemy
 import requests
 from sqlalchemy import create_engine
 from bs4 import BeautifulSoup
-import seaborn as sns
 
 # Function to scrape data from the website
 def scrape_data():
@@ -36,7 +35,7 @@ def scrape_data():
         'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
     }
     data_data = []
-    for i in range(1,35):
+    for i in range(1,41):
         data = {
             'SectionId': '6',
             'SectionName': '\r\n                                                \r\n                                                    \r\n                                                \r\n                                                Procurement\r\n                                            ',
