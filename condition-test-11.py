@@ -12,7 +12,7 @@ st.set_page_config(layout="wide")
 
 @st.cache_resource
 def get_connection():
-    return sqlite3.connect('/Users/davidscatterday/Documents/python projects/NYC/nycprocurement.db', check_same_thread=False)
+    return sqlite3.connect('nycprocurement.db', check_same_thread=False)
 
 conn = get_connection()
 
