@@ -6,3 +6,4 @@ pillow
 greenlet
 schedule
 pytz
+beautifulsoup4
