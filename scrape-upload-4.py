@@ -64,48 +64,49 @@ def scrape_data():
 
     return pd.DataFrame(data_data)
 
+def scraper():
 
-# Scrape the data and create the DataFrame
-scraped_df = scrape_data()
-db_path = '/Users/davidscatterday/Documents/python projects/NYC/nycprocurement.db'
+    # Scrape the data and create the DataFrame
+    scraped_df = scrape_data()
+    db_path = 'nycprocurement.db'
 
-# Connect to SQLite database
-conn = sqlite3.connect(db_path)
+    # Connect to SQLite database
+    conn = sqlite3.connect(db_path)
 
-# Print the DataFrame to check if data was scraped successfully
-print(scraped_df.head())  # Display first few rows of the DataFrame
+    # Print the DataFrame to check if data was scraped successfully
+    print(scraped_df.head())  # Display first few rows of the DataFrame
 
-# Check if DataFrame is empty
-if scraped_df.empty:
-    print("No data scraped. Exiting.")
-else:
-    print(f"DataFrame shape: {scraped_df.shape}")
-    print("DataFrame columns:", scraped_df.columns)
-
-# Insert or update records in the SQLite database
-for index, row in scraped_df.iterrows():
-    cursor = conn.cursor()
-    
-    # Check if the record already exists based on Title (or any other unique identifier)
-    cursor.execute("SELECT COUNT(*) FROM nycproawards5 WHERE Title=?", (row['Title'],))
-    exists = cursor.fetchone()[0]
-
-    if exists:
-        # Update existing record if it exists
-        cursor.execute("""
-            UPDATE nycproawards5 
-            SET Agency=?, [Award Date]=?, Description=?, Category=? 
-            WHERE Title=?
-        """, (row['Agency'], row['Award Date'], row['Description'], row['Category'], row['Title']))
+    # Check if DataFrame is empty
+    if scraped_df.empty:
+        print("No data scraped. Exiting.")
     else:
-        # Insert new record if it doesn't exist
-        cursor.execute("""
-            INSERT INTO nycproawards5 (Agency, Title, [Award Date], Description, Category) 
-            VALUES (?, ?, ?, ?, ?)
-        """, (row['Agency'], row['Title'], row['Award Date'], row['Description'], row['Category']))
+        print(f"DataFrame shape: {scraped_df.shape}")
+        print("DataFrame columns:", scraped_df.columns)
 
-# Commit changes and close the connection
-conn.commit()
-conn.close()
+    # Insert or update records in the SQLite database
+    for index, row in scraped_df.iterrows():
+        cursor = conn.cursor()
+        
+        # Check if the record already exists based on Title (or any other unique identifier)
+        cursor.execute("SELECT COUNT(*) FROM nycproawards5 WHERE Title=?", (row['Title'],))
+        exists = cursor.fetchone()[0]
 
-print("Data successfully uploaded to 'nycproawards4' table in the database.")
+        if exists:
+            # Update existing record if it exists
+            cursor.execute("""
+                UPDATE nycproawards5 
+                SET Agency=?, [Award Date]=?, Description=?, Category=? 
+                WHERE Title=?
+            """, (row['Agency'], row['Award Date'], row['Description'], row['Category'], row['Title']))
+        else:
+            # Insert new record if it doesn't exist
+            cursor.execute("""
+                INSERT INTO nycproawards5 (Agency, Title, [Award Date], Description, Category) 
+                VALUES (?, ?, ?, ?, ?)
+            """, (row['Agency'], row['Title'], row['Award Date'], row['Description'], row['Category']))
+
+    # Commit changes and close the connection
+    conn.commit()
+    conn.close()
+
+    print("Data successfully uploaded to 'nycproawards4' table in the database.")

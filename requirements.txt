@@ -4,3 +4,5 @@ pandas
 playwright
 pillow
 greenlet
+schedule
+pytz
